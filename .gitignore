@@ -1,0 +1,11 @@
+build/
+.cache/
+logs/
+.vs
+.vscode
+*.ini
+*.sh
+*.bin
+CMakePresets.json
+ideas.md
+notes.md

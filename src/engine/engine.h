@@ -2,8 +2,12 @@
 
 // STL
 #include <iostream>
+#include <fstream>
+#include <algorithm>
+#include <iterator>
 #include <future>
 #include <utility>
+#include <random>
 
 // GLFW
 #define GLFW_INCLUDE_NONE
@@ -34,25 +38,38 @@
 // fastgltf
 #include <fastgltf/core.hpp>
 
-// // vk_bootstrap
-// #include <VkBootstrap.h>
-
 // VMA
 #include <vk_mem_alloc.h>
 
 // thread-pool
 #include <BS_thread_pool.hpp>
 
-// zpp::bits
-#include <zpp_bits.h>
-
-// // fmt
-// #include <fmt/format.h>
-
 // spdlog
 #include <spdlog/spdlog.h>
 #include <spdlog/async.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/fmt/bundled/color.h>
+
+// cereal
+#include <cereal/archives/binary.hpp>
+
+struct Position
+{
+	glm::vec3 value;
+	// constexpr static auto serialize(auto & archive, auto & self)
+    // {
+    //     return archive(self.value);
+    // }
+};
+
+struct Velocity
+{
+	glm::vec3 value;
+	// constexpr static auto serialize(auto & archive, auto & self)
+	// {
+	// 	return archive(self.value);
+	// }
+};
 
 void testLibraries();

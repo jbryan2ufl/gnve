@@ -17,7 +17,3 @@ The Going Nowhere Vulkan Engine is a sandbox for learning Vulkan and other game 
 |[ImGui](https://github.com/ocornut/imgui)|v1.91.9b-docking|UI elements|
 |[spdlog](https://github.com/gabime/spdlog)|v1.15.3|Logging|
 |[Tracy](https://github.com/wolfpld/tracy/)||Profiling|
-
-<!-- |[vk-bootstrap](https://github.com/charles-lunarg/vk-bootstrap)|v1.4.315|Vulkan boilerplate| -->
-
-<!-- |[{fmt}](https://github.com/fmtlib/fmt)|11.2.0|Log text color & formatting| -->
