@@ -9,3 +9,4 @@ logs/
 CMakePresets.json
 ideas.md
 notes.md
+.clangd

@@ -1,8 +1,11 @@
-#include "engine/engine.h"
+#include "engine.h"
 
 int main()
 {
-	testLibraries();
+    Engine e{};
+    e.init();
+    e.run();
+    e.clean_up();
 
-	return 0;
+    return 0;
 }
