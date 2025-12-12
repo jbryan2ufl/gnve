@@ -49,7 +49,7 @@ void Engine::init()
         std::abort();
     }
     vkb::Instance vkb_inst = vkb::InstanceBuilder{}
-                                     .set_app_name("GNVE")
+                                     .set_app_name(name.c_str())
                                      .request_validation_layers()
                                      .use_default_debug_messenger()
                                      .build()
@@ -152,7 +152,8 @@ void Engine::setup_logger()
     EngineLog::imgui_sink->set_level(spdlog::level::trace);
 
     EngineLog::logger = std::make_shared<spdlog::logger>(
-            "GNVE", spdlog::sinks_init_list{ EngineLog::console_sink, EngineLog::file_sink, EngineLog::imgui_sink });
+            name.c_str(),
+            spdlog::sinks_init_list{ EngineLog::console_sink, EngineLog::file_sink, EngineLog::imgui_sink });
 
     EngineLog::logger->set_level(spdlog::level::debug);
     spdlog::set_default_logger(EngineLog::logger);
@@ -184,7 +185,7 @@ void Engine::run()
         ImGui_ImplVulkan_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
-        ImGui::Begin("GNVEApp");
+        ImGui::Begin(name.c_str());
 
         if (EngineLog::imgui_sink != nullptr) {
             for (auto& line : EngineLog::imgui_sink->buffer)
@@ -295,18 +296,6 @@ void Engine::clean_up()
 void testLibraries()
 {
     {
-        if (glfwInit() == GLFW_TRUE) {
-            std::cout << "GLFW linked OK\n";
-            glfwTerminate();
-        }
-    }
-
-    {
-        glm::vec3 test(1.0f);
-        std::cout << "GLM linked OK\n";
-    }
-
-    {
         const std::string filename = "test_serial.bin";
         {
             entt::registry registry;
@@ -348,22 +337,6 @@ void testLibraries()
 
         std::cout << "EnTT linked OK\n";
         std::cout << "cereal linked OK\n";
-    }
-
-    {
-        JPH::RegisterDefaultAllocator();
-        std::cout << "JoltPhysics linked OK\n";
-    }
-
-    {
-        fastgltf::Parser parser;
-        std::cout << "fastgltf linked OK\n";
-    }
-
-    {
-        BS::thread_pool pool;
-        std::future<int> future = pool.submit_task([] { return 42; });
-        std::cout << future.get() << " thread-pool linked OK\n";
     }
 }
 

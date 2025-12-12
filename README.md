@@ -1,6 +1,7 @@
 # GNVE
-The Going Nowhere Vulkan Engine is a sandbox for learning Vulkan and other game development libraries. Current dependencies are:
+The Going Nowhere Vulkan Engine is a sandbox for learning Vulkan and other game development libraries.
 
+## Dependencies
 |Name|Version|Usage|
 |-|-|-|
 |[Vulkan](https://www.vulkan.org/)|1.4.304.0|Core rendering pipeline|
@@ -13,6 +14,6 @@ The Going Nowhere Vulkan Engine is a sandbox for learning Vulkan and other game 
 |[stb](https://github.com/nothings/stb)|802cd45|Various utilities|
 |[JoltPhysics](https://github.com/jrouwe/JoltPhysics)|v5.3.0|Physics solver|
 |[EnTT](https://github.com/skypjack/entt)|v3.15.0|ECS system|
-|[ImGui](https://github.com/ocornut/imgui)|v1.91.9b-docking|UI elements|
+|[ImGui](https://github.com/ocornut/imgui)|v1.92.5-docking|UI elements|
 |[spdlog](https://github.com/gabime/spdlog)|v1.15.3|Logging|
 |[cereal](https://github.com/USCiLab/cereal)|v1.3.2|Serialization|

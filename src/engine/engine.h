@@ -28,7 +28,6 @@
 #include <glm/glm.hpp>
 
 // ImGui
-// #define IMGUI_IMPL_VULKAN_USE_VOLK
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_vulkan.h>
@@ -90,7 +89,7 @@ protected:
 };
 
 #define START_WINDOW_WIDTH 1920
-#define START_WINDOW_HEIGHT 1920
+#define START_WINDOW_HEIGHT 1080
 
 class Engine
 {
@@ -102,8 +101,6 @@ public:
     void clean_up();
 
 private:
-    int32_t width = 1920;
-    int32_t height = 1080;
     std::string name = "GNVE";
     vk::Device device;
     VkSurfaceKHR surface = VK_NULL_HANDLE;
