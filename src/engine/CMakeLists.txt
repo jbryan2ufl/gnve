@@ -13,7 +13,6 @@ set(ENTT_VERSION "v3.15.0")
 set(IMGUI_VERSION "v1.92.5-docking")
 set(SPDLOG_VERSION "v1.15.3")
 set(CEREAL_VERSION "v1.3.2")
-set(VKBOOTSTRAP_VERSION "v1.4.335")
 
 include(FetchContent)
 
@@ -124,17 +123,11 @@ Fetch(
     SOURCE_SUBDIR ""
 )
 
-# vk-bootstrap
-Fetch(
-    vkbootstrap
-    GIT_REPOSITORY https://github.com/charles-lunarg/vk-bootstrap
-    GIT_TAG ${VKBOOTSTRAP_VERSION}
-)
-
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "*.cpp")
 add_library(GNVEngine STATIC ${SOURCES})
 
 set_target_properties(GNVEngine PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
     VERSION ${PROJECT_VERSION}
     SOVERSION ${PROJECT_VERSION_MAJOR}
     OUTPUT_NAME "GNVEngine"
@@ -145,13 +138,11 @@ set_target_properties(GNVEngine PROPERTIES
 
 target_sources(GNVEngine PRIVATE
     ${imgui_SOURCE_DIR}/imgui.cpp
-    # ${imgui_SOURCE_DIR}/imgui_demo.cpp
     ${imgui_SOURCE_DIR}/imgui_draw.cpp
     ${imgui_SOURCE_DIR}/imgui_tables.cpp
     ${imgui_SOURCE_DIR}/imgui_widgets.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp
-    ${vkbootstrap_SOURCE_DIR}/src/VkBootstrap.cpp
 )
 
 target_include_directories(GNVEngine PUBLIC
@@ -165,7 +156,6 @@ target_include_directories(GNVEngine PUBLIC
     ${stb_SOURCE_DIR}
     ${cereal_SOURCE_DIR}/include
     ${glm_SOURCE_DIR}
-    ${vkbootstrap_SOURCE_DIR}/src
 )
 
 target_link_libraries(GNVEngine
@@ -177,5 +167,4 @@ target_link_libraries(GNVEngine
         Jolt
         GPUOpen::VulkanMemoryAllocator
         spdlog::spdlog
-        vk-bootstrap::vk-bootstrap
 )

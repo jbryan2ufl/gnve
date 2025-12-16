@@ -10,3 +10,6 @@ CMakePresets.json
 ideas.md
 notes.md
 .clangd
+dist/
+old/
+.gitignore

@@ -28,3 +28,4 @@ endif()
 
 add_subdirectory(src/engine)
 add_subdirectory(src/app)
+add_subdirectory(src/shaders)

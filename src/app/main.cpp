@@ -1,11 +1,15 @@
 #include "engine.h"
+#include <engine.h>
 
 int main()
 {
-    Engine e{};
-    e.init();
-    e.run();
-    e.clean_up();
+    try {
+        GNVEngine app;
+        app.run();
+    } catch (const std::exception& e) {
+        std::cerr << e.what() << std::endl;
+        return EXIT_FAILURE;
+    }
 
-    return 0;
+    return EXIT_SUCCESS;
 }

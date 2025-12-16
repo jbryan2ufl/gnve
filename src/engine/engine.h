@@ -1,31 +1,33 @@
 #pragma once
 
 // STL
-#include "glm/fwd.hpp"
-#include <iostream>
-#include <fstream>
 #include <algorithm>
-#include <iterator>
-#include <future>
-#include <utility>
-#include <random>
+#include <array>
+#include <assert.h>
+#include <cstdlib>
+#include <cstring>
+#include <fstream>
+#include <iostream>
+#include <stdexcept>
+#include <vector>
 
 // Vulkan
-#include <vulkan/vulkan.hpp>
+#include <vulkan/vulkan_raii.hpp>
 
 // GLFW
-#define GLFW_INCLUDE_NONE
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
-
-// vk-boostrap
-#include <VkBootstrap.h>
 
 // VMA
 #include <vk_mem_alloc.h>
 
 // GLM
+#define GLM_FORCE_SWIZZLE
+#define GLM_FORCE_CTOR_INIT
+#define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
+#include <glm/gtx/string_cast.hpp>
 
 // ImGui
 #include <imgui.h>
@@ -46,32 +48,130 @@
 #include <BS_thread_pool.hpp>
 
 // spdlog
-#include <spdlog/spdlog.h>
-#include <spdlog/async.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/basic_file_sink.h>
-#include <spdlog/fmt/bundled/color.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/spdlog.h>
 
 // cereal
 #include <cereal/archives/binary.hpp>
 
-struct Position {
-    glm::vec3 value;
-};
+constexpr uint32_t WIDTH = 1920;
+constexpr uint32_t HEIGHT = 1080;
+constexpr int MAX_FRAMES_IN_FLIGHT = 2;
+constexpr char const* appName = "GNVEApp";
+constexpr char const* engineName = "GNVEngine";
 
-struct Velocity {
-    glm::vec3 value;
-};
+const std::vector<char const*> validationLayers = { "VK_LAYER_KHRONOS_validation" };
 
-void testLibraries();
+#ifdef NDEBUG
+constexpr bool enableValidationLayers = false;
+#else
+constexpr bool enableValidationLayers = true;
+#endif
+
+class GNVEngine
+{
+  public:
+    void run()
+    {
+        setup_logger();
+        initWindow();
+        initVulkan();
+        mainLoop();
+        cleanup();
+    }
+
+  private:
+    ImGuiIO io;
+
+    GLFWwindow* window = nullptr;
+    vk::raii::Context context;
+    vk::raii::Instance instance = nullptr;
+    vk::raii::DebugUtilsMessengerEXT debugMessenger = nullptr;
+    vk::raii::SurfaceKHR surface = nullptr;
+    vk::raii::PhysicalDevice physicalDevice = nullptr;
+    vk::raii::Device device = nullptr;
+    uint32_t queueIndex = ~0;
+    vk::raii::Queue queue = nullptr;
+    vk::raii::DescriptorPool descriptorPool = nullptr;
+
+    vk::raii::SwapchainKHR swapChain = nullptr;
+    std::vector<vk::Image> swapChainImages;
+    vk::SurfaceFormatKHR swapChainSurfaceFormat;
+    vk::Extent2D swapChainExtent;
+    std::vector<vk::raii::ImageView> swapChainImageViews;
+
+    vk::raii::PipelineLayout pipelineLayout = nullptr;
+    vk::raii::Pipeline graphicsPipeline = nullptr;
+
+    vk::raii::Buffer vertexBuffer = nullptr;
+    vk::raii::DeviceMemory vertexBufferMemory = nullptr;
+
+    vk::raii::CommandPool commandPool = nullptr;
+    std::vector<vk::raii::CommandBuffer> commandBuffers;
+
+    std::vector<vk::raii::Semaphore> presentCompleteSemaphores;
+    std::vector<vk::raii::Semaphore> renderFinishedSemaphores;
+    std::vector<vk::raii::Fence> inFlightFences;
+    uint32_t frameIndex = 0;
+
+    bool framebufferResized = false;
+
+    std::vector<const char*> requiredDeviceExtension = { vk::KHRSwapchainExtensionName, vk::KHRSpirv14ExtensionName,
+                                                         vk::KHRSynchronization2ExtensionName,
+                                                         vk::KHRCreateRenderpass2ExtensionName };
+
+    void setup_logger();
+    void initImGui();
+    void newImGuiFrame();
+
+    void createDescriptorPool();
+    void cleanupSwapChain();
+    void recreateSwapChain();
+    void createSwapChain();
+    void createImageViews();
+    void createSyncObjects();
+
+    void initWindow();
+    static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
+    void initVulkan();
+    void mainLoop();
+    void cleanup();
+    void createInstance();
+    void setupDebugMessenger();
+    void createSurface();
+    void pickPhysicalDevice();
+    void createLogicalDevice();
+    void createGraphicsPipeline();
+    void createCommandPool();
+    void createVertexBuffer();
+    uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties);
+    void createCommandBuffers();
+    void recordCommandBuffer(uint32_t imageIndex);
+    void transition_image_layout(uint32_t imageIndex, vk::ImageLayout old_layout, vk::ImageLayout new_layout,
+                                 vk::AccessFlags2 src_access_mask, vk::AccessFlags2 dst_access_mask,
+                                 vk::PipelineStageFlags2 src_stage_mask, vk::PipelineStageFlags2 dst_stage_mask);
+    void drawFrame();
+    [[nodiscard]] vk::raii::ShaderModule createShaderModule(const std::vector<char>& code) const;
+    static uint32_t chooseSwapMinImageCount(vk::SurfaceCapabilitiesKHR const& surfaceCapabilities);
+    static vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& availableFormats);
+    static vk::PresentModeKHR chooseSwapPresentMode(const std::vector<vk::PresentModeKHR>& availablePresentModes);
+    vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities);
+    std::vector<const char*> getRequiredExtensions();
+    static VKAPI_ATTR vk::Bool32 VKAPI_CALL debugCallback(vk::DebugUtilsMessageSeverityFlagBitsEXT severity,
+                                                          vk::DebugUtilsMessageTypeFlagsEXT type,
+                                                          const vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData,
+                                                          void*);
+    static std::vector<char> readFile(const std::string& filename);
+};
 
 class ImGuiSink : public spdlog::sinks::base_sink<std::mutex>
 {
-public:
+  public:
     std::vector<std::string> buffer;
     size_t max_size = 1024;
 
-protected:
+  protected:
     void sink_it_(const spdlog::details::log_msg& msg) override
     {
         spdlog::memory_buf_t formatted;
@@ -83,46 +183,28 @@ protected:
         buffer.emplace_back(fmt::to_string(formatted));
     }
 
-    void flush_() override
-    {
-    }
+    void flush_() override {}
 };
 
-#define START_WINDOW_WIDTH 1920
-#define START_WINDOW_HEIGHT 1080
-
-class Engine
-{
-public:
-    Engine() {};
-    void init();
-    void setup_logger();
-    void run();
-    void clean_up();
-
-private:
-    std::string name = "GNVE";
-    vk::Device device;
-    VkSurfaceKHR surface = VK_NULL_HANDLE;
-    vk::Instance instance;
-    vk::Queue queue;
-    uint32_t queue_family;
-    GLFWwindow* window;
-    ImGui_ImplVulkanH_Window* wd;
-    uint32_t min_image_count = 2;
-    ImGuiIO io;
-    bool rebuild = false;
-    vk::ClearValue clear_value;
-    vk::PhysicalDevice physical_device;
-    vk::DescriptorPool descriptor_pool;
-    vk::DebugUtilsMessengerEXT debug_messenger;
-};
-
-class EngineLog
-{
-public:
+struct EngineLog {
     static std::shared_ptr<spdlog::sinks::basic_file_sink_mt> file_sink;
     static std::shared_ptr<spdlog::sinks::stdout_color_sink_mt> console_sink;
     static std::shared_ptr<ImGuiSink> imgui_sink;
     static std::shared_ptr<spdlog::logger> logger;
+};
+
+struct Vertex {
+    glm::vec2 pos;
+    glm::vec3 color;
+
+    static vk::VertexInputBindingDescription getBindingDescription()
+    {
+        return { 0, sizeof(Vertex), vk::VertexInputRate::eVertex };
+    }
+
+    static std::array<vk::VertexInputAttributeDescription, 2> getAttributeDescriptions()
+    {
+        return { vk::VertexInputAttributeDescription(0, 0, vk::Format::eR32G32Sfloat, offsetof(Vertex, pos)),
+                 vk::VertexInputAttributeDescription(1, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, color)) };
+    }
 };
