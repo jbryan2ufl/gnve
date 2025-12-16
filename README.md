@@ -6,7 +6,6 @@ The Going Nowhere Vulkan Engine is a sandbox for learning Vulkan and other game 
 |-|-|-|
 |[Vulkan](https://www.vulkan.org/)|1.4.304.0|Core rendering pipeline|
 |[VMA](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator)|v3.3.0|Vulkan memory allocator|
-|[vk-bootstrap](https://github.com/charles-lunarg/vk-bootstrap)|v1.4.335|Vulkan initialization helper|
 |[GLFW](https://github.com/glfw/glfw)|3.4|Windowing & input|
 |[GLM](https://github.com/g-truc/glm)|1.0.1|Graphics math|
 |[fastgltf](https://github.com/spnda/fastgltf)|v0.8.0|gltf model loading|
