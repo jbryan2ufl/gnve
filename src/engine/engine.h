@@ -1,6 +1,7 @@
 #pragma once
 
 // STL
+#include "spdlog/sinks/rotating_file_sink.h"
 #include <algorithm>
 #include <array>
 #include <assert.h>
@@ -106,6 +107,8 @@ class GNVEngine
 
     vk::raii::Buffer vertexBuffer = nullptr;
     vk::raii::DeviceMemory vertexBufferMemory = nullptr;
+    vk::raii::Buffer indexBuffer = nullptr;
+    vk::raii::DeviceMemory indexBufferMemory = nullptr;
 
     vk::raii::CommandPool commandPool = nullptr;
     std::vector<vk::raii::CommandBuffer> commandBuffers;
@@ -163,6 +166,10 @@ class GNVEngine
                                                           const vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData,
                                                           void*);
     static std::vector<char> readFile(const std::string& filename);
+    void createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties,
+                      vk::raii::Buffer& buffer, vk::raii::DeviceMemory& bufferMemory);
+    void copyBuffer(vk::raii::Buffer& srcBuffer, vk::raii::Buffer& dstBuffer, vk::DeviceSize size);
+    void createIndexBuffer();
 };
 
 class ImGuiSink : public spdlog::sinks::base_sink<std::mutex>
@@ -217,10 +224,12 @@ class ImGuiSink : public spdlog::sinks::base_sink<std::mutex>
 };
 
 struct EngineLog {
-    static std::shared_ptr<spdlog::sinks::basic_file_sink_mt> file_sink;
+    static std::shared_ptr<spdlog::sinks::rotating_file_sink_mt> file_sink;
     static std::shared_ptr<spdlog::sinks::stdout_color_sink_mt> console_sink;
     static std::shared_ptr<ImGuiSink> imgui_sink;
     static std::shared_ptr<spdlog::logger> logger;
+    static uint32_t maxLogSize;
+    static uint32_t maxLogs;
 };
 
 struct Vertex {

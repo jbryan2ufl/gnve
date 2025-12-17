@@ -1,20 +1,26 @@
 #include <engine.h>
 
-std::shared_ptr<spdlog::sinks::basic_file_sink_mt> EngineLog::file_sink = nullptr;
+std::shared_ptr<spdlog::sinks::rotating_file_sink_mt> EngineLog::file_sink = nullptr;
 std::shared_ptr<spdlog::sinks::stdout_color_sink_mt> EngineLog::console_sink = nullptr;
 std::shared_ptr<ImGuiSink> EngineLog::imgui_sink = nullptr;
 std::shared_ptr<spdlog::logger> EngineLog::logger = nullptr;
+uint32_t EngineLog::maxLogSize = 1024 * 1024 * 10;
+uint32_t EngineLog::maxLogs = 5;
 
-const std::vector<Vertex> vertices = { { { 0.0f, -0.5f }, { 1.0f, 0.0f, 0.0f } },
-                                       { { 0.5f, 0.5f }, { 0.0f, 1.0f, 0.0f } },
-                                       { { -0.5f, 0.5f }, { 0.0f, 0.0f, 1.0f } } };
+const std::vector<Vertex> vertices = { { { -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f } },
+                                       { { 0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f } },
+                                       { { 0.5f, 0.5f }, { 0.0f, 0.0f, 1.0f } },
+                                       { { -0.5f, 0.5f }, { 1.0f, 1.0f, 1.0f } } };
+
+const std::vector<uint16_t> indices = { 0, 1, 2, 2, 3, 0 };
 
 void GNVEngine::setup_logger()
 {
     EngineLog::console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
     EngineLog::console_sink->set_level(spdlog::level::warn);
 
-    EngineLog::file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("logs/multisink.txt", true);
+    EngineLog::file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
+        "logs/engine.log", EngineLog::maxLogSize, EngineLog::maxLogs);
     EngineLog::file_sink->set_level(spdlog::level::warn);
 
     EngineLog::imgui_sink = std::make_shared<ImGuiSink>();
@@ -25,7 +31,7 @@ void GNVEngine::setup_logger()
     EngineLog::logger->set_level(spdlog::level::trace);
 
     spdlog::set_default_logger(EngineLog::logger);
-    spdlog::flush_on(spdlog::level::warn);
+    spdlog::flush_every(std::chrono::seconds(5));
 
     EngineLog::logger->info("Loggers setup.");
     EngineLog::logger->trace("Test");
@@ -67,6 +73,7 @@ void GNVEngine::initVulkan()
     createGraphicsPipeline();
     createCommandPool();
     createVertexBuffer();
+    createIndexBuffer();
     createCommandBuffers();
     createSyncObjects();
     initImGui();
@@ -446,25 +453,39 @@ void GNVEngine::createCommandPool()
 
 void GNVEngine::createVertexBuffer()
 {
-    vk::BufferCreateInfo bufferInfo{};
-    bufferInfo.setSize(sizeof(vertices[0]) * vertices.size())
-        .setUsage(vk::BufferUsageFlagBits::eVertexBuffer)
-        .setSharingMode(vk::SharingMode::eExclusive);
-    vertexBuffer = vk::raii::Buffer(device, bufferInfo);
+    vk::DeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+    vk::raii::Buffer stagingBuffer{ nullptr };
+    vk::raii::DeviceMemory stagingBufferMemory{ nullptr };
+    createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc,
+                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, stagingBuffer,
+                 stagingBufferMemory);
+    void* dataStaging = stagingBufferMemory.mapMemory(0, bufferSize);
+    memcpy(dataStaging, vertices.data(), bufferSize);
+    stagingBufferMemory.unmapMemory();
 
-    vk::MemoryRequirements memRequirements = vertexBuffer.getMemoryRequirements();
-    vk::MemoryAllocateInfo memoryAllocateInfo{};
-    memoryAllocateInfo.setAllocationSize(memRequirements.size)
-        .setMemoryTypeIndex(
-            findMemoryType(memRequirements.memoryTypeBits,
-                           vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent));
-    vertexBufferMemory = vk::raii::DeviceMemory(device, memoryAllocateInfo);
+    createBuffer(bufferSize, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
+                 vk::MemoryPropertyFlagBits::eDeviceLocal, vertexBuffer, vertexBufferMemory);
+    copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
+}
 
-    vertexBuffer.bindMemory(*vertexBufferMemory, 0);
+void GNVEngine::createIndexBuffer()
+{
+    vk::DeviceSize bufferSize = sizeof(indices[0]) * indices.size();
 
-    void* data = vertexBufferMemory.mapMemory(0, bufferInfo.size);
-    memcpy(data, vertices.data(), bufferInfo.size);
-    vertexBufferMemory.unmapMemory();
+    vk::raii::Buffer stagingBuffer({});
+    vk::raii::DeviceMemory stagingBufferMemory({});
+    createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc,
+                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, stagingBuffer,
+                 stagingBufferMemory);
+
+    void* data = stagingBufferMemory.mapMemory(0, bufferSize);
+    memcpy(data, indices.data(), (size_t)bufferSize);
+    stagingBufferMemory.unmapMemory();
+
+    createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
+                 vk::MemoryPropertyFlagBits::eDeviceLocal, indexBuffer, indexBufferMemory);
+
+    copyBuffer(stagingBuffer, indexBuffer, bufferSize);
 }
 
 uint32_t GNVEngine::findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties)
@@ -515,6 +536,7 @@ void GNVEngine::recordCommandBuffer(uint32_t imageIndex)
         .setLayerCount(1)
         .setColorAttachmentCount(1)
         .setPColorAttachments(&attachmentInfo);
+
     commandBuffer.beginRendering(renderingInfo);
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *graphicsPipeline);
     commandBuffer.setViewport(0, vk::Viewport(0.0f, 0.0f, static_cast<float>(swapChainExtent.width),
@@ -523,11 +545,11 @@ void GNVEngine::recordCommandBuffer(uint32_t imageIndex)
         0, vk::Rect2D(vk::Offset2D(0, 0), vk::Extent2D{ static_cast<uint32_t>(swapChainExtent.width),
                                                         static_cast<uint32_t>(swapChainExtent.height) }));
     commandBuffer.bindVertexBuffers(0, *vertexBuffer, { 0 });
-    commandBuffer.draw(3, 1, 0, 0);
-
+    commandBuffer.bindIndexBuffer(*indexBuffer, 0, vk::IndexTypeValue<decltype(indices)::value_type>::value);
+    commandBuffer.drawIndexed(indices.size(), 1, 0, 0, 0);
     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), *commandBuffer);
-
     commandBuffer.endRendering();
+
     // After rendering, transition the swapchain image to PRESENT_SRC
     transition_image_layout(imageIndex, vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::ePresentSrcKHR,
                             vk::AccessFlagBits2::eColorAttachmentWrite,         // srcAccessMask
@@ -735,4 +757,39 @@ std::vector<char> GNVEngine::readFile(const std::string& filename)
     file.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
     file.close();
     return buffer;
+}
+
+void GNVEngine::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties,
+                             vk::raii::Buffer& buffer, vk::raii::DeviceMemory& bufferMemory)
+{
+    vk::BufferCreateInfo bufferInfo{};
+    bufferInfo.setSize(size).setUsage(usage).setSharingMode(vk::SharingMode::eExclusive);
+    buffer = vk::raii::Buffer(device, bufferInfo);
+
+    vk::MemoryRequirements memRequirements = buffer.getMemoryRequirements();
+    vk::MemoryAllocateInfo allocInfo{};
+    allocInfo.setAllocationSize(memRequirements.size)
+        .setMemoryTypeIndex(findMemoryType(memRequirements.memoryTypeBits, properties));
+    bufferMemory = vk::raii::DeviceMemory(device, allocInfo);
+    buffer.bindMemory(*bufferMemory, 0);
+}
+
+void GNVEngine::copyBuffer(vk::raii::Buffer& srcBuffer, vk::raii::Buffer& dstBuffer, vk::DeviceSize size)
+{
+    vk::CommandBufferAllocateInfo allocInfo{};
+    allocInfo.setCommandPool(commandPool).setLevel(vk::CommandBufferLevel::ePrimary).setCommandBufferCount(1);
+    vk::raii::CommandBuffer commandCopyBuffer = std::move(device.allocateCommandBuffers(allocInfo).front());
+
+    vk::CommandBufferBeginInfo beginInfo{};
+    beginInfo.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
+
+    commandCopyBuffer.begin(beginInfo);
+    commandCopyBuffer.copyBuffer(*srcBuffer, *dstBuffer, vk::BufferCopy(0, 0, size));
+    commandCopyBuffer.end();
+
+    vk::SubmitInfo submitInfo{};
+    submitInfo.setCommandBufferCount(1).setPCommandBuffers(&*commandCopyBuffer);
+    queue.submit(submitInfo, nullptr);
+
+    queue.waitIdle();
 }
