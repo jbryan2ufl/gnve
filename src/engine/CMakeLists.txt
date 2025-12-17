@@ -136,7 +136,8 @@ set_target_properties(GNVEngine PROPERTIES
     CXX_EXTENSIONS OFF
 )
 
-target_sources(GNVEngine PRIVATE
+target_sources(GNVEngine
+PRIVATE
     ${imgui_SOURCE_DIR}/imgui.cpp
     ${imgui_SOURCE_DIR}/imgui_draw.cpp
     ${imgui_SOURCE_DIR}/imgui_tables.cpp
@@ -145,7 +146,8 @@ target_sources(GNVEngine PRIVATE
     ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp
 )
 
-target_include_directories(GNVEngine PUBLIC
+target_include_directories(GNVEngine
+PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${imgui_SOURCE_DIR}
     ${imgui_SOURCE_DIR}/backends
@@ -159,12 +161,12 @@ target_include_directories(GNVEngine PUBLIC
 )
 
 target_link_libraries(GNVEngine
-    PUBLIC
-        Vulkan::Vulkan
-        glfw
-        glm::glm
-        fastgltf
-        Jolt
-        GPUOpen::VulkanMemoryAllocator
-        spdlog::spdlog
+PUBLIC
+    Vulkan::Vulkan
+    glfw
+    glm::glm
+    GPUOpen::VulkanMemoryAllocator
+    spdlog::spdlog
+    fastgltf
+    Jolt
 )

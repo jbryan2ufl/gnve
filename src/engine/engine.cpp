@@ -15,19 +15,25 @@ void GNVEngine::setup_logger()
     EngineLog::console_sink->set_level(spdlog::level::warn);
 
     EngineLog::file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("logs/multisink.txt", true);
-    EngineLog::file_sink->set_level(spdlog::level::trace);
+    EngineLog::file_sink->set_level(spdlog::level::warn);
 
     EngineLog::imgui_sink = std::make_shared<ImGuiSink>();
     EngineLog::imgui_sink->set_level(spdlog::level::trace);
 
     EngineLog::logger = std::make_shared<spdlog::logger>(
         engineName, spdlog::sinks_init_list{ EngineLog::console_sink, EngineLog::file_sink, EngineLog::imgui_sink });
+    EngineLog::logger->set_level(spdlog::level::trace);
 
-    EngineLog::logger->set_level(spdlog::level::debug);
     spdlog::set_default_logger(EngineLog::logger);
     spdlog::flush_on(spdlog::level::warn);
 
-    EngineLog::logger->info("Loggers setup");
+    EngineLog::logger->info("Loggers setup.");
+    EngineLog::logger->trace("Test");
+    EngineLog::logger->debug("Test");
+    EngineLog::logger->info("Test");
+    EngineLog::logger->warn("Test");
+    EngineLog::logger->error("Test");
+    EngineLog::logger->critical("Test");
 }
 
 void GNVEngine::initWindow()
@@ -633,8 +639,8 @@ void GNVEngine::newImGuiFrame()
     ImGui::Begin(engineName);
 
     if (EngineLog::imgui_sink != nullptr) {
-        for (auto& line : EngineLog::imgui_sink->buffer)
-            ImGui::TextUnformatted(line.c_str());
+        for (auto& entry : EngineLog::imgui_sink->buffer)
+            ImGui::TextColored(entry.color, "%s", entry.msg.c_str());
     }
 
     ImGui::End();

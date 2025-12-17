@@ -168,19 +168,49 @@ class GNVEngine
 class ImGuiSink : public spdlog::sinks::base_sink<std::mutex>
 {
   public:
-    std::vector<std::string> buffer;
+    struct LogEntry {
+        std::string msg;
+        ImVec4 color;
+    };
+
+    std::vector<LogEntry> buffer;
     size_t max_size = 1024;
 
   protected:
     void sink_it_(const spdlog::details::log_msg& msg) override
     {
         spdlog::memory_buf_t formatted;
-        formatter_->format(msg, formatted);
+        base_sink<std::mutex>::formatter_->format(msg, formatted);
 
         if (buffer.size() >= max_size)
             buffer.erase(buffer.begin());
 
-        buffer.emplace_back(fmt::to_string(formatted));
+        ImVec4 color{};
+        switch (msg.level) {
+        case spdlog::level::trace:
+            color = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+            break;
+        case spdlog::level::debug:
+            color = ImVec4(0.2f, 0.6f, 0.8f, 1.0f);
+            break;
+        case spdlog::level::info:
+            color = ImVec4(0.2f, 0.6f, 0.2f, 1.0f);
+            break;
+        case spdlog::level::warn:
+            color = ImVec4(0.8f, 0.6f, 0.0f, 1.0f);
+            break;
+        case spdlog::level::err:
+            color = ImVec4(0.8f, 0.0f, 0.0f, 1.0f);
+            break;
+        case spdlog::level::critical:
+            color = ImVec4(0.4f, 0.0f, 0.0f, 1.0f);
+            break;
+        default:
+            color = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+            break;
+        }
+
+        buffer.emplace_back(LogEntry{ fmt::to_string(formatted), color });
     }
 
     void flush_() override {}
