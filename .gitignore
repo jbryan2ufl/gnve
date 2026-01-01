@@ -4,4 +4,3 @@ dist/
 .vs
 .vscode/
 *.ini
-*.bin
