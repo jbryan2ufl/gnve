@@ -2,34 +2,20 @@ set(CMAKE_EXTERNALPROJECT_DOWNLOAD_PARALLEL 8)
 set(FETCHCONTENT_DOWNLOAD_PARALLEL 8)
 set(FETCHCONTENT_UPDATES_DISCONNECTED ON)
 
-set(GLFW_VERSION "3.4")
-set(VMA_VERSION "v3.3.0")
-set(GLM_VERSION "1.0.1")
-set(FASTGLTF_VERSION "v0.8.0")
-set(THREADPOOL_VERSION "v5.0.0")
-set(STB_VERSION "master")
-set(JOLTPHYSICS_VERSION "v5.3.0")
-set(ENTT_VERSION "v3.15.0")
-set(IMGUI_VERSION "v1.92.5-docking")
-set(SPDLOG_VERSION "v1.15.3")
-set(CEREAL_VERSION "v1.3.2")
-set(KTX_VERSION "v4.4.2")
-set(MESHOPTIMIZER_VERSION "v1.0")
-set(SPIRVREFLECT_VERSION "main")
-
-set(FETCH_SHALLOW ON)
-set(FETCH_PROGRESS OFF)
-
 include(FetchContent)
+
+set(STRIP_GIT ON CACHE BOOL "" FORCE)
 
 macro(Fetch name)
     FetchContent_Declare(${name}
         ${ARGN}
-        GIT_SHALLOW ${FETCH_SHALLOW}
-        GIT_PROGRESS ${FETCH_PROGRESS}
+        GIT_SHALLOW TRUE
+        GIT_PROGRESS TRUE
+        GIT_SUBMODULES ""
     )
-    if(NOT ${name}_POPULATED)
-        FetchContent_MakeAvailable(${name})
+    FetchContent_MakeAvailable(${name})
+    if(STRIP_GIT)
+        file(REMOVE_RECURSE "${${name}_SOURCE_DIR}/.git")
     endif()
 endmacro()
 
@@ -47,28 +33,28 @@ set(GLFW_INSTALL OFF CACHE BOOL "" FORCE)
 Fetch(
     glfw
     GIT_REPOSITORY https://github.com/glfw/glfw
-    GIT_TAG ${GLFW_VERSION}
+    GIT_TAG 7b6aead9fb88b3623e3b3725ebb42670cbe4c579
 )
 
 # GLM
 Fetch(
     glm
     GIT_REPOSITORY https://github.com/g-truc/glm
-    GIT_TAG ${GLM_VERSION}
+    GIT_TAG 8d1fd52e5ab5590e2c81768ace50c72bae28f2ed
 )
 
 # ImGui
 Fetch(
     imgui
     GIT_REPOSITORY https://github.com/ocornut/imgui
-    GIT_TAG ${IMGUI_VERSION}
+    GIT_TAG 3912b3d9a9c1b3f17431aebafd86d2f40ee6e59c
 )
 
 # EnTT
 Fetch(
     entt
     GIT_REPOSITORY https://github.com/skypjack/entt
-    GIT_TAG ${ENTT_VERSION}
+    GIT_TAG b4e58bdd364ad72246c123a0c28538eab3252672
 )
 
 # JoltPhysics
@@ -76,7 +62,7 @@ set(ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
 Fetch(
     jolt
     GIT_REPOSITORY https://github.com/jrouwe/JoltPhysics
-    GIT_TAG ${JOLTPHYSICS_VERSION}
+    GIT_TAG 23dadd0e603f1b321142d4c74df07fce85064989
     SOURCE_SUBDIR "Build"
 )
 
@@ -84,7 +70,7 @@ Fetch(
 Fetch(
     fastgltf
     GIT_REPOSITORY https://github.com/spnda/fastgltf
-    GIT_TAG ${FASTGLTF_VERSION}
+    GIT_TAG 0d1b67a28c4950ea2deb796702006dcbe31e02b3
     EXCLUDE_FROM_ALL
 )
 
@@ -92,35 +78,35 @@ Fetch(
 Fetch(
     vma
     GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
-    GIT_TAG ${VMA_VERSION}
+    GIT_TAG 1d8f600fd424278486eade7ed3e877c99f0846b1
 )
 
 # thread-pool
 Fetch(
     threadpool
     GIT_REPOSITORY https://github.com/bshoshany/thread-pool
-    GIT_TAG ${THREADPOOL_VERSION}
+    GIT_TAG aa3fbfbe80762fe3ac90e2bf05e153b92536277a
 )
 
-# stb
-Fetch(
-    stb
-    GIT_REPOSITORY https://github.com/nothings/stb
-    GIT_TAG ${STB_VERSION}
-)
+# # stb
+# Fetch(
+#     stb
+#     GIT_REPOSITORY https://github.com/nothings/stb
+#     GIT_TAG f1c79c02822848a9bed4315b12c8c8f3761e1296
+# )
 
 # spdlog
 Fetch(
     spdlog
     GIT_REPOSITORY https://github.com/gabime/spdlog
-    GIT_TAG ${SPDLOG_VERSION}
+    GIT_TAG 486b55554f11c9cccc913e11a87085b2a91f706f
 )
 
 # cereal
 Fetch(
     cereal
     GIT_REPOSITORY https://github.com/USCiLab/cereal
-    GIT_TAG ${CEREAL_VERSION}
+    GIT_TAG ebef1e929807629befafbb2918ea1a08c7194554
     SOURCE_SUBDIR ""
 )
 
@@ -131,7 +117,7 @@ set(KTX_FEATURE_TOOLS OFF CACHE BOOL "" FORCE)
 Fetch(
     ktx
     GIT_REPOSITORY https://github.com/KhronosGroup/KTX-Software
-    GIT_TAG ${KTX_VERSION}
+    GIT_TAG 4d6fc70eaf62ad0558e63e8d97eb9766118327a6
     EXCLUDE_FROM_ALL
 )
 
@@ -139,6 +125,7 @@ Fetch(
 Fetch(
     basisu
     GIT_REPOSITORY https://github.com/BinomialLLC/basis_universal
+    GIT_TAG 5c511882f1fdacfac798e83b5102f2f782d1de2f
     SOURCE_SUBDIR ""
 )
 
@@ -150,14 +137,14 @@ set(EXAMPLES OFF CACHE BOOL "" FORCE)
 Fetch(
     meshoptimizer
     GIT_REPOSITORY https://github.com/zeux/meshoptimizer
-    GIT_TAG ${MESHOPTIMIZER_VERSION}
+    GIT_TAG 73583c335e541c139821d0de2bf5f12960a04941
 )
 
-## SPIRV-Reflect
+# SPIRV-Reflect
 set(SPIRV_REFLECT_EXECUTABLE OFF CACHE BOOL "" FORCE)
 set(SPIRV_REFLECT_EXECUTABLE OFF CACHE BOOL "" FORCE)
 Fetch(
     spirvreflect
     GIT_REPOSITORY https://github.com/KhronosGroup/SPIRV-Reflect.git
-    GIT_TAG ${SPIRVREFLECT_VERSION}
+    GIT_TAG ef913b3ab3da1becca3cf46b15a10667c67bebe5
 )

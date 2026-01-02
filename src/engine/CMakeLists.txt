@@ -30,7 +30,7 @@ PUBLIC
     ${jolt_SOURCE_DIR}/..
     ${fastgltf_SOURCE_DIR}/include
     ${threadpool_SOURCE_DIR}/include
-    ${stb_SOURCE_DIR}
+    # ${stb_SOURCE_DIR}
     ${cereal_SOURCE_DIR}/include
     ${glm_SOURCE_DIR}
     ${ktx_SOURCE_DIR}/include
@@ -40,7 +40,6 @@ target_link_libraries(GNVEngine
 PUBLIC
     Vulkan::Vulkan
     glfw
-    glm::glm
     GPUOpen::VulkanMemoryAllocator
     spdlog::spdlog
     fastgltf
