@@ -9,7 +9,7 @@ foreach(MODEL ${SOURCE_MODELS})
 
     add_custom_command(
         OUTPUT ${OUT_MODEL}
-        COMMAND gltfpack -i "${MODEL}" -o "${OUT_MODEL}" -tc -vpf
+        COMMAND gltfpack -i "${MODEL}" -o "${OUT_MODEL}" -tu -vpf -vtf
         DEPENDS ${MODEL}
         COMMENT "Optimizing ${MODEL} -> ${OUT_MODEL}"
     )

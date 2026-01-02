@@ -440,8 +440,8 @@ void GNVEngine::createGraphicsPipeline()
         .setRasterizerDiscardEnable(vk::False)
         .setPolygonMode(vk::PolygonMode::eFill)
         .setCullMode(vk::CullModeFlagBits::eNone)
-        .setCullMode(vk::CullModeFlagBits::eBack)
-        .setFrontFace(vk::FrontFace::eClockwise)
+        // .setCullMode(vk::CullModeFlagBits::eBack)
+        // .setFrontFace(vk::FrontFace::eClockwise)
         .setDepthBiasEnable(vk::False)
         .setLineWidth(1.0f);
 
@@ -916,10 +916,10 @@ void GNVEngine::createDepthResources()
     findDepthFormat();
     EngineLog::logger->debug("Depth format {}", vk::to_string(depthFormat));
 
-    createImage(swapChainExtent.width, swapChainExtent.height, depthFormat, vk::ImageTiling::eOptimal,
+    createImage(swapChainExtent.width, swapChainExtent.height, 1, depthFormat, vk::ImageTiling::eOptimal,
                 vk::ImageUsageFlagBits::eDepthStencilAttachment, vk::MemoryPropertyFlagBits::eDeviceLocal, depthImage,
                 depthImageMemory);
-    depthImageView = createImageView(depthImage, depthFormat, vk::ImageAspectFlagBits::eDepth);
+    depthImageView = createImageView(depthImage, depthFormat, vk::ImageAspectFlagBits::eDepth, 1);
 }
 
 vk::Format GNVEngine::findSupportedFormat(const std::vector<vk::Format>& candidates, vk::ImageTiling tiling,
@@ -948,15 +948,15 @@ void GNVEngine::findDepthFormat()
     }
 }
 
-void GNVEngine::createImage(uint32_t width, uint32_t height, vk::Format format, vk::ImageTiling tiling,
-                            vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties, vk::raii::Image& image,
-                            vk::raii::DeviceMemory& imageMemory)
+void GNVEngine::createImage(uint32_t width, uint32_t height, uint32_t mipLevels, vk::Format format,
+                            vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties,
+                            vk::raii::Image& image, vk::raii::DeviceMemory& imageMemory)
 {
     vk::ImageCreateInfo imageInfo{};
     imageInfo.setImageType(vk::ImageType::e2D)
         .setFormat(format)
         .setExtent({ width, height, 1 })
-        .setMipLevels(1)
+        .setMipLevels(mipLevels)
         .setArrayLayers(1)
         .setSamples(vk::SampleCountFlagBits::e1)
         .setTiling(tiling)
@@ -974,13 +974,13 @@ void GNVEngine::createImage(uint32_t width, uint32_t height, vk::Format format, 
 }
 
 vk::raii::ImageView GNVEngine::createImageView(vk::raii::Image& image, vk::Format format,
-                                               vk::ImageAspectFlags aspectFlags)
+                                               vk::ImageAspectFlags aspectFlags, uint32_t mipLevels)
 {
+    vk::ImageSubresourceRange range{};
+    range.setAspectMask(vk::ImageAspectFlagBits::eColor).setBaseMipLevel(0).setLevelCount(mipLevels).setLayerCount(1);
+
     vk::ImageViewCreateInfo viewInfo{};
-    viewInfo.setImage(*image)
-        .setViewType(vk::ImageViewType::e2D)
-        .setFormat(format)
-        .setSubresourceRange({ aspectFlags, 0, 1, 0, 1 });
+    viewInfo.setImage(*image).setViewType(vk::ImageViewType::e2D).setFormat(format).setSubresourceRange(range);
     return vk::raii::ImageView(device, viewInfo);
 }
 
@@ -988,9 +988,9 @@ size_t GNVEngine::createTexture(const uint8_t* ktxData, size_t ktxSize)
 {
     EngineLog::logger->trace("Creating texture");
     Texture texture{};
-    ktxTexture* kTexture;
+    ktxTexture2* kTexture;
     KTX_error_code result =
-        ktxTexture_CreateFromMemory(ktxData, ktxSize, KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &kTexture);
+        ktxTexture2_CreateFromMemory(ktxData, ktxSize, KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &kTexture);
     EngineLog::logger->trace("KTX texture loaded from memory");
 
     if (result != KTX_SUCCESS) {
@@ -1011,8 +1011,14 @@ size_t GNVEngine::createTexture(const uint8_t* ktxData, size_t ktxSize)
         texture.imageFormat = static_cast<vk::Format>(ktx2->vkFormat);
     }
 
-    ktx_size_t imageSize = ktxTexture_GetImageSize(kTexture, 0);
-    ktx_uint8_t* ktxTextureData = ktxTexture_GetData(kTexture);
+    size_t totalSize = kTexture->dataSize;
+    uint8_t* ktxTextureData = kTexture->pData;
+
+    texture.mipLevels = kTexture->numLevels;
+    if (texture.mipLevels > maxLod) {
+        maxLod = texture.mipLevels - 1;
+        createTextureSampler();
+    }
 
     texture.width = kTexture->baseWidth;
     texture.height = kTexture->baseHeight;
@@ -1020,28 +1026,59 @@ size_t GNVEngine::createTexture(const uint8_t* ktxData, size_t ktxSize)
 
     vk::raii::Buffer stagingBuffer({});
     vk::raii::DeviceMemory stagingBufferMemory({});
-    createBuffer(imageSize, vk::BufferUsageFlagBits::eTransferSrc,
+    createBuffer(totalSize, vk::BufferUsageFlagBits::eTransferSrc,
                  vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, stagingBuffer,
                  stagingBufferMemory);
 
-    void* data = stagingBufferMemory.mapMemory(0, imageSize);
-    memcpy(data, ktxTextureData, imageSize);
+    void* data = stagingBufferMemory.mapMemory(0, totalSize);
+    memcpy(data, ktxTextureData, totalSize);
     stagingBufferMemory.unmapMemory();
     EngineLog::logger->trace("Staging buffer copied");
 
-    createImage(texture.width, texture.height, texture.imageFormat, vk::ImageTiling::eOptimal,
+    std::vector<vk::BufferImageCopy> regions;
+
+    for (uint32_t level = 0; level < texture.mipLevels; level++) {
+        ktx_size_t offset = 0;
+        ktx_size_t mipSize = ktxTexture2_GetImageOffset(kTexture, level, 0, 0, &offset);
+
+        vk::BufferImageCopy region{};
+        region.setBufferOffset(offset).setBufferRowLength(0).setBufferImageHeight(0);
+
+        vk::ImageSubresourceLayers subresourceLayers{};
+        subresourceLayers.setAspectMask(vk::ImageAspectFlagBits::eColor)
+            .setMipLevel(level)
+            .setBaseArrayLayer(0)
+            .setLayerCount(1);
+        region.setImageSubresource(subresourceLayers);
+        vk::Extent3D extent{};
+        extent.width = kTexture->baseWidth >> level;
+        extent.height = kTexture->baseHeight >> level;
+        extent.depth = 1;
+        region.setImageExtent(extent);
+
+        regions.push_back(region);
+    }
+
+    createImage(texture.width, texture.height, texture.mipLevels, texture.imageFormat, vk::ImageTiling::eOptimal,
                 vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
                 vk::MemoryPropertyFlagBits::eDeviceLocal, texture.image, texture.imageMemory);
     EngineLog::logger->trace("Image created");
 
-    transitionImageLayout(texture.image, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
-    copyBufferToImage(stagingBuffer, texture.image, texture.width, texture.height);
-    transitionImageLayout(texture.image, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
+    transitionImageLayout(texture.image, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal,
+                          texture.mipLevels);
+
+    auto commandBuffer = beginSingleTimeCommands();
+    commandBuffer->copyBufferToImage(stagingBuffer, texture.image, vk::ImageLayout::eTransferDstOptimal, regions);
+    endSingleTimeCommands(*commandBuffer);
+
+    transitionImageLayout(texture.image, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal,
+                          texture.mipLevels);
     EngineLog::logger->trace("Transition + copy to image");
 
-    ktxTexture_Destroy(kTexture);
+    ktxTexture2_Destroy(kTexture);
 
-    texture.imageView = createImageView(texture.image, texture.imageFormat, vk::ImageAspectFlagBits::eColor);
+    texture.imageView =
+        createImageView(texture.image, texture.imageFormat, vk::ImageAspectFlagBits::eColor, texture.mipLevels);
 
     textureManager.push_back(std::move(texture));
 
@@ -1053,13 +1090,14 @@ size_t GNVEngine::createTexture(const uint8_t* ktxData, size_t ktxSize)
 }
 
 void GNVEngine::transitionImageLayout(const vk::raii::Image& image, vk::ImageLayout oldLayout,
-                                      vk::ImageLayout newLayout)
+                                      vk::ImageLayout newLayout, uint32_t mipLevels)
 {
     auto commandBuffer = beginSingleTimeCommands();
 
     vk::ImageMemoryBarrier barrier{};
-    barrier.setOldLayout(oldLayout).setNewLayout(newLayout).setImage(*image).setSubresourceRange(
-        { vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1 });
+    vk::ImageSubresourceRange range{};
+    range.setAspectMask(vk::ImageAspectFlagBits::eColor).setBaseMipLevel(0).setLevelCount(mipLevels).setLayerCount(1);
+    barrier.setOldLayout(oldLayout).setNewLayout(newLayout).setImage(*image).setSubresourceRange(range);
 
     vk::PipelineStageFlags sourceStage;
     vk::PipelineStageFlags destinationStage;
@@ -1134,6 +1172,8 @@ void GNVEngine::createTextureSampler()
         .setAddressModeV(vk::SamplerAddressMode::eRepeat)
         .setAddressModeW(vk::SamplerAddressMode::eRepeat)
         .setMipLodBias(0.0f)
+        .setMinLod(0.0f)
+        .setMaxLod(static_cast<float>(maxLod))
         .setAnisotropyEnable(vk::True)
         .setMaxAnisotropy(properties.limits.maxSamplerAnisotropy)
         .setCompareEnable(vk::False)
@@ -1384,9 +1424,10 @@ void GNVEngine::updateUniformBuffer(uint32_t currentImage)
     auto currentTime = std::chrono::high_resolution_clock::now();
     float time = std::chrono::duration<float>(currentTime - startTime).count();
 
-    glm::mat4 initialRotation = glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1, 0, 0));
-    glm::mat4 continuousRotation = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0, 0, 1));
-    ubo.model = continuousRotation * initialRotation;
+    // glm::mat4 initialRotation = glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1, 0, 0));
+    // glm::mat4 continuousRotation = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0, 0, 1));
+    // ubo.model = continuousRotation * initialRotation;
+    ubo.model = glm::identity<glm::mat4>();
 
     ubo.view = glm::lookAt(camera.position, camera.target, camera.up);
 
@@ -1400,7 +1441,7 @@ void GNVEngine::updateUniformBuffer(uint32_t currentImage)
     //                             static_cast<float>(swapChainExtent.width) /
     //                             static_cast<float>(swapChainExtent.height), 0.1f, 100.0f);
 
-    // ubo.proj[1][1] *= -1;
+    ubo.proj[1][1] *= -1;
 
     memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 }

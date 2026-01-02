@@ -115,7 +115,7 @@ struct UniformBufferObject {
 struct CameraControls {
     glm::vec3 position = { 2.0f, 2.0f, 2.0f };
     glm::vec3 target = { 0.0f, 0.0f, 0.0f };
-    glm::vec3 up = { 0.0f, 0.0f, 1.0f };
+    glm::vec3 up = { 0.0f, 1.0f, 0.0f };
     float fov = 45.0f;
 };
 
@@ -126,6 +126,7 @@ struct Texture {
     vk::Format imageFormat = vk::Format::eUndefined;
     uint32_t width;
     uint32_t height;
+    uint32_t mipLevels;
 };
 
 struct Mesh {
@@ -155,6 +156,7 @@ class GNVEngine
     CameraControls camera{};
 
     std::vector<Texture> textureManager;
+    uint32_t maxLod = 0;
     vk::raii::Sampler textureSampler = nullptr;
     std::vector<Mesh> meshManager;
 
@@ -211,11 +213,13 @@ class GNVEngine
     void findDepthFormat();
     vk::Format findSupportedFormat(const std::vector<vk::Format>& candidates, vk::ImageTiling tiling,
                                    vk::FormatFeatureFlags features) const;
-    void createImage(uint32_t width, uint32_t height, vk::Format format, vk::ImageTiling tiling,
+    void createImage(uint32_t width, uint32_t height, uint32_t mipLevels, vk::Format format, vk::ImageTiling tiling,
                      vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties, vk::raii::Image& image,
                      vk::raii::DeviceMemory& imageMemory);
-    vk::raii::ImageView createImageView(vk::raii::Image& image, vk::Format format, vk::ImageAspectFlags aspectFlags);
-    void transitionImageLayout(const vk::raii::Image& image, vk::ImageLayout oldLayout, vk::ImageLayout newLayout);
+    vk::raii::ImageView createImageView(vk::raii::Image& image, vk::Format format, vk::ImageAspectFlags aspectFlags,
+                                        uint32_t mipLevels);
+    void transitionImageLayout(const vk::raii::Image& image, vk::ImageLayout oldLayout, vk::ImageLayout newLayout,
+                               uint32_t mipLevels);
     std::unique_ptr<vk::raii::CommandBuffer> beginSingleTimeCommands();
     void endSingleTimeCommands(const vk::raii::CommandBuffer& commandBuffer) const;
     void copyBufferToImage(const vk::raii::Buffer& buffer, vk::raii::Image& image, uint32_t width, uint32_t height);

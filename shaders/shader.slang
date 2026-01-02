@@ -38,4 +38,8 @@ ConstantBuffer<Push> push;
 
 [shader("fragment")]
 // float4 fragMain(VSOutput vertIn) : SV_TARGET { return float4(1.0f, 1.0f, 1.0f, 1.0f); }
-float4 fragMain(VSOutput vertIn) : SV_TARGET { return textures[int(push.texIndex)].Sample(vertIn.fragTexCoord); }
+float4 fragMain(VSOutput vertIn) : SV_TARGET
+{
+    float2 uv = vertIn.fragTexCoord;
+    return textures[int(push.texIndex)].Sample(uv);
+}
